@@ -27,7 +27,10 @@ public class Main {
 				Thread thread = new Thread(new NonBlockingServer());
 				thread.start();
 			}
-			case ASYNCH -> System.out.println("ASYNCH server is not supported");
+			case ASYNCH -> {
+				Thread thread = new Thread(new AsynchServer());
+				thread.start();
+			}
 		}
 	}
 

@@ -6,31 +6,25 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.NetworkChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
 public class NonBlockingServer implements Runnable {
 
-
-	//https://github.com/petrelevich/tcp-server-client/blob/main/tcp-server/src/main/java/ru/tcp/Server.java
-	private static final Logger log = Logger.getLogger(BlockingServer.class.getName());
+	private static final Logger log = Logger.getLogger(NonBlockingServer.class.getName());
 
 	private final Map<SocketAddress, SocketChannel> clients = new HashMap<>();
 	private final Queue<SocketAddress> connectedClientsEvents = new ConcurrentLinkedQueue<>();
@@ -57,9 +51,9 @@ public class NonBlockingServer implements Runnable {
 							selector.select(this::performIO);
 							sendMessagesToClients();
 						} catch (CommunicationException ex) {
-							//SocketChannel clientAddress = getSocketAddress(ex.getSocketChannel());
-							//log.severe(String.format("error in client communication: %s, message %s", clientAddress, ex));
-							//disconnect(clientAddress);
+							SocketAddress clientAddress = getSocketAddress(ex.getSocketChannel());
+							log.severe(String.format("error in client communication: %s, message %s", clientAddress, ex));
+							disconnect(clientAddress);
 						} catch (Exception ex) {
 							log.severe(String.format("unexpected error:{}", ex.getMessage()));
 						}
@@ -185,7 +179,7 @@ public class NonBlockingServer implements Runnable {
 		while ((msg = messagesFromClients.poll()) != null) {
 			var client = clients.get(msg.address());
 			if (client == null) {
-//				logger.error("client {} not found", msg.clientAddress());
+				log.severe(String.format("client %s not found", msg.address()));
 			} else {
 				write(client, msg.data());
 			}
