@@ -5,12 +5,14 @@ import pro.karagodin.message.Data;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
+import java.nio.channels.Channels;
 import java.nio.channels.CompletionHandler;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
@@ -19,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -52,34 +55,24 @@ public class AsynchServer implements Runnable {
 					serverChannel.accept(null, new CompletionHandler<>() {
 
 						@Override
-						public void completed(AsynchronousSocketChannel result, Object attachment) {
+						public void completed(AsynchronousSocketChannel clientChannel, Object attachment) {
 							if (serverChannel.isOpen()){
 								serverChannel.accept(null, this);
 							}
 							try {
-								clients.put(result.getRemoteAddress(),result);
-							} catch (IOException e) {
-								throw new RuntimeException(e);
-							}
-
-							while(true) {
-								Data data = readRequest(result);
-								if (data != null) {
-									try {
-										messagesFromClients.add(new Message(result.getRemoteAddress(), data));
-										sendMessagesToClients();
-
-									} catch (IOException e) {
-										throw new RuntimeException(e);
-									}
-								} else {
-									try {
-										disconnect(result.getRemoteAddress());
+								clients.put(clientChannel.getRemoteAddress(),clientChannel);
+								InputStream is = Channels.newInputStream(clientChannel);
+								while (true) {
+									Data receivedData = Data.parseDelimitedFrom(is);
+									if (receivedData == null) {
 										break;
-									} catch (IOException e) {
-										throw new RuntimeException(e);
+									} else {
+										messagesFromClients.add(new Message(clientChannel.getRemoteAddress(), receivedData));
+										sendMessagesToClients();
 									}
 								}
+							} catch (IOException e) {
+								throw new RuntimeException(e);
 							}
 						}
 						@Override
@@ -115,62 +108,6 @@ public class AsynchServer implements Runnable {
 			}
 		} catch (IOException ex) {
 			log.severe(ex.getMessage());
-		}
-	}
-
-	private Data readRequest(AsynchronousSocketChannel socketChannel) {
-		try {
-			int usedIdx = 0;
-			int readBytesTotal = 0;
-			int readBytes;
-
-			while (true) {
-				ByteBuffer buffer = ByteBuffer.allocateDirect(1024);
-				Future<Integer> f = socketChannel.read(buffer);
-				try {
-					readBytes = f.get(1, TimeUnit.MILLISECONDS);
-				} catch (TimeoutException e) {
-					break;
-				}
-				if (readBytes <= 0)
-					break;
-
-				buffer.flip();
-				if (usedIdx >= parts.size()) {
-					parts.add(ByteBuffer.allocateDirect(readBytes));
-				}
-
-				if (parts.get(usedIdx).capacity() < readBytes) {
-					parts.add(usedIdx, ByteBuffer.allocateDirect(readBytes));
-				}
-
-				parts.get(usedIdx).put(buffer);
-				buffer.flip();
-				readBytesTotal += readBytes;
-				usedIdx++;
-			}
-
-
-			if (readBytesTotal == 0) {
-				return null;
-			}
-			var result = new byte[readBytesTotal];
-			var resultIdx = 0;
-
-			for (var idx = 0; idx < usedIdx; idx++) {
-				var part = parts.get(idx);
-				part.flip();
-				part.get(result, resultIdx, part.limit());
-				resultIdx += part.limit();
-				part.flip();
-			}
-			parts.clear();
-
-			try (ByteArrayInputStream in = new ByteArrayInputStream(result)) {
-				return Data.parseDelimitedFrom(in);
-			}
-		} catch (Exception ex) {
-			throw new RuntimeException("Reading error", ex);
 		}
 	}
 
