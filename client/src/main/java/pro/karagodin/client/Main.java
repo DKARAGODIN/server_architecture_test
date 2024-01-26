@@ -5,7 +5,6 @@ import pro.karagodin.message.Data;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,7 +21,7 @@ public class Main {
 	private static final int SERVER_PORT = 8000;
 	private static final int SERVER_RESET_PORT = 8001;
 	static {
-		System.setProperty("java.util.logging.SimpleFormatter.format", "%1$tF %1$tT %4$s %2$s %5$s%6$s%n");
+		System.setProperty("java.util.logging.SimpleFormatter.format", "%1$tF %1$tT.%1$tL %4$s %2$s %5$s%6$s%n");
 	}
 	private static final Logger log = Logger.getLogger(Main.class.getName());
 
@@ -114,7 +113,7 @@ public class Main {
 			final int clientId = i + 1;
 
 			Runnable runnable = () -> {
-				log.info(clientId + " starting client with");
+				log.info(clientId + " starting client");
 				long startTime = System.currentTimeMillis();
 				try (Socket socket = new Socket("localhost", SERVER_PORT)) {
 					Random random = new Random();
@@ -162,7 +161,7 @@ public class Main {
 
 	private static void signalResetStats() {
 		try (Socket s = new Socket("localhost", SERVER_RESET_PORT)) {
-
+			s.getInputStream().read();
 		} catch (Throwable e) {
 			e.printStackTrace();
 		}

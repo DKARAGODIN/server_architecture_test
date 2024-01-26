@@ -18,6 +18,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
+@Deprecated
 public class NonBlockingServerOld implements Runnable {
 
 	private static final Logger log = Logger.getLogger(BlockingServer.class.getName());

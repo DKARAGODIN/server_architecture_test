@@ -104,7 +104,7 @@ public class BlockingServer implements Runnable {
 					double avgServerTime = serverTimes.stream().mapToLong(val -> val).average().orElse(0.0);
 					double avgSortTime = avgSortTimes.stream().mapToDouble(val -> val).average().orElse(0.0);
 					String line = String.format("Average server time per client - %f. Average sort time - %f", avgServerTime, avgSortTime);
-					try (BufferedWriter writer = new BufferedWriter(new FileWriter("server_result", true))) {
+					try (BufferedWriter writer = new BufferedWriter(new FileWriter("blocking_server_result", true))) {
 						writer.append(line);
 						writer.newLine();
 					}
@@ -112,7 +112,7 @@ public class BlockingServer implements Runnable {
 					serverTimes.clear();
 					avgSortTimes.clear();
 					log.info("Reset finished");
-					try (BufferedWriter writer = new BufferedWriter(new FileWriter("server_result", true))) {
+					try (BufferedWriter writer = new BufferedWriter(new FileWriter("blocking_server_result", true))) {
 						writer.newLine();
 					}
 				} catch (Throwable e) {
